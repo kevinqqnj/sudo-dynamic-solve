@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset=utf-8>
+    <title>数独精灵 - Sudoku Wizard</title>
+    <link href="https://unpkg.com/vuetify/dist/vuetify.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
+    <link href=https://cdn.bootcss.com/material-design-icons/3.0.1/iconfont/material-icons.min.css rel=stylesheet>
+    <!-- <script defer src="https://use.fontawesome.com/releases/v5.0.4/js/all.js"></script> -->
+    <!-- https://fontawesome.com/icons?d=gallery&m=free -->
+    <link rel=stylesheet href="/static/css/cnsmall2.css">
+</head>
+<style>
+.input-group {
+    padding: 0;
+}
+
+.container {
+    padding: 0;
+}
+</style>
+
+<body>
+    <div id="app">
+        <v-app>
+            <v-toolbar dark app style="z-index:100;">
+                <v-menu :open-on-hover="!is_mobile" bottom offset-y>
+                    <v-btn slot="activator" icon>
+                        <v-icon>menu</v-icon>
+                    </v-btn>
+                    <v-list>
+                        <v-list-tile v-for="item,ind in 5" :key="item" @click="fetch_tmda(ind)">
+                            <v-list-tile-title v-text="levels[ind]"></v-list-tile-title>
+                        </v-list-tile>
+                        <v-list-tile @click="nd=5;fetch_tmda(nd)">
+                            <v-list-tile-title>史上最难</v-list-tile-title>
+                        </v-list-tile>
+                    </v-list>
+                </v-menu>
+                <v-toolbar-title v-text="'数独精灵 - ' + levels[nd]"></v-toolbar-title>
+                <v-spacer></v-spacer>
+                <v-toolbar-items>
+                    <v-btn v-show="loading" loading></v-btn>
+                    <v-btn v-text="info" style="text-transform:none;"></v-btn>
+                </v-toolbar-items>
+            </v-toolbar>
+            <v-content>
+                <v-container fluid dark>
+                    <v-layout row wrap>
+                        <v-flex xs12 md8 class="text-xs-center text-center">
+                            <div id="pixi" style="z-index:-1;"></div>
+                            <div id="pad" :style="`z-index:99;position:absolute;background-color:#00000;top:${canvas.top}px;left:${canvas.left}px;width:${appWidth*.9}px;height:${appWidth*.9}px;`" v-show="allow_action">
+                                <div v-for="r,x in 9" :key="r">
+                                    <v-menu :style="`z-index:200;position:absolute;top:${appWidth/10*x}px;left:${appWidth/10*y}px;width:${appWidth/10}px;height:${appWidth/10}px;`" v-for="c,y in 9" :key="c" :id="`r${x}c${y}`">
+                                        <v-btn icon slot="activator" style="color: transparent;" @click.native="highlight(puzzle[x][y])">
+                                            <v-icon>menu</v-icon>
+                                        </v-btn>
+                                        <!--       <v-card v-show="cell_editable" v-for="rr in 3" :key="rr" style="background-color: #ffffff77">
+                                            <span v-for="cc in 3" :key="cc">
+                                                <v-btn round icon raised color="info" v-text="(rr-1)*3+cc"
+                                                    style="font-size: 1.7rem;text-align:center;"
+                                                    @click="cell_input(x, y, (rr-1)*3+cc)"/>
+                                            </span>
+                                        </v-card> -->
+                                    </v-menu>
+                                </div>
+                            </div>
+                        </v-flex>
+                        <v-flex xs12 md4>
+                            <div color="" v-show="!is_mobile" style="height:5%;"></div>
+                            <v-card color="success" style="text-align:center">
+                                <v-btn color="error" icon @click="reset_pixi">
+                                    <v-icon>delete</v-icon>
+                                </v-btn>
+                                <v-menu :close-on-content-click="false">
+                                    <v-btn slot="activator" color="primary" icon>
+                                        <v-icon>edit</v-icon>
+                                    </v-btn>
+                                    <v-card color="" flat>
+                                        <v-card-text>
+                                            <v-subheader color="grey">输入9行数字，未知的以0代替，不要以空格或其它隔开</v-subheader>
+                                            <v-container fluid>
+                                                <v-layout row>
+                                                    <v-flex xs12>
+                                                        <v-text-field v-model="user_input" :rules="[rules.pad]" placeholder="123456789" textarea type="number"></v-text-field>
+                                                    </v-flex>
+                                                    <v-flex xs12>
+                                                        <v-btn color="primary" @click="submit_puzzle">提 交</v-btn>
+                                                    </v-flex>
+                                                </v-layout>
+                                            </v-container>
+                                        </v-card-text>
+                                    </v-card>
+                                </v-menu>
+                                <v-btn color="primary" @click="solve_sudo" :disabled="loading" v-text="answer_visible?'隐藏答案' : '答 案'"></v-btn>
+                                <v-btn color="primary" dark @click="start_steps">单 步</v-btn>
+                            </v-card>
+                            <div color="" v-show="!is_mobile" style="height:5%;"></div>
+                            <v-card class="grey--text" style="text-align:center">
+                                <p v-text="info_addition"></p>
+                                <div class="text-xs-center">
+                                    <!--  v-show="guess_step>=0"> -->
+                                    <v-pagination :length="guess_record.length" v-model="guess_step" @input="show_step(guess_step)" :total-visible="is_mobile? 6 : 8"></v-pagination>
+                                </div>
+                                <div>
+                                    <v-btn color="info" @click="next_assume('prev')">
+                                        <v-icon>fast_rewind</v-icon> 上个猜测点</v-btn>
+                                    <v-btn color="info" @click="next_assume('next')">下个猜测点
+                                        <v-icon>fast_forward</v-icon>
+                                    </v-btn>
+                                </div>
+                                <p>2018 @kevinqqnj
+                                    <v-btn icon small href="https://github.com/kevinqqnj/v-charts-tut.git">
+                                        <v-icon fab>code</v-icon>
+                                    </v-btn>
+                                </p>
+                            </v-card>
+                        </v-flex>
+                    </v-layout>
+                </v-container>
+            </v-content>
+        </v-app>
+    </div>
+    <script src="https://cdn.bootcss.com/vue/2.5.16/vue.js"></script>
+    <script src="https://unpkg.com/vuetify/dist/vuetify.min.js"></script>
+    <script src="https://cdn.bootcss.com/axios/0.18.0/axios.min.js"></script>
+    <script src="https://cdn.bootcss.com/pixi.js/4.8.0/pixi.min.js"></script>
+    <script src="/static/js/main.js"></script>
+    <script>
+    var vm = new Vue({
+        el: '#app',
+        data: () => ({
+            is_mobile: true,
+            appWidth: 0,
+            inputDialog: false,
+            levels: ['入门', '初级', '中级', '高级', '骨灰级', '最难', '...'],
+            nd: 0, // selected level, 0-4
+            total_guess: -1,
+            guess_step: 0,
+            guess_record: [], //猜测步骤
+            loading: false,
+            allow_action: false,
+            cell_editable: false,
+            answer_visible: false,
+            is_highlighted: false, // cell is highlighted?
+            previous_highlight: -1,
+            info: 'Ready',
+            info_addition: '左上角选取难度，点铅笔手动输入，点垃圾桶清空桌面',
+            puzzle0: [
+                [8, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 3, 6, 0, 0, 0, 0, 0],
+                [0, 7, 0, 0, 9, 0, 2, 0, 0],
+                [0, 5, 0, 0, 0, 7, 0, 0, 0],
+                [0, 0, 0, 0, 4, 5, 7, 0, 0],
+                [0, 0, 0, 1, 0, 0, 0, 3, 0],
+                [0, 0, 1, 0, 0, 0, 0, 6, 8],
+                [0, 0, 8, 5, 0, 0, 0, 1, 0],
+                [0, 9, 0, 0, 0, 0, 4, 0, 0]
+            ],
+            puzzle: [],
+            puzzle_input: [],
+            app: Object,
+            sprite: Object,
+            cells: [], // cells drawed by pixi
+            rules: {
+                pad: (value) => {
+                    let pattern = /^[\d\n]{89}/m // 81+ 8\n
+                    return pattern.test(value) || 'Invalid puzzle!'
+                }
+            },
+            user_input: '',
+        }),
+        created() {
+            this.is_mobile = browser.versions.mobile && !(browser.versions.iPad)
+            console.log(browser.versions)
+            //this.puzzle = JSON.parse(JSON.stringify(this.puzzle0))
+            this.init_puzzle()
+            // this.fetch_tmda(-1)
+        },
+        mounted() {
+            if (this.is_mobile) this.appWidth = (document.getElementById('pixi')).offsetWidth
+            else this.appWidth = Math.min(600, (document.getElementById('pixi')).offsetWidth)
+            console.log(this.appWidth)
+            this.init_pixi()
+            this.info = 'Ready'
+            // this.fetch_tmda(-1)
+        },
+        computed: {
+            cellstyle_empty() { // every cell need to width - bordersize*2
+                if (document.getElementsByTagName('canvas').length > 0)
+                    this.appWidth = document.getElementsByTagName('canvas')[0].offsetWidth
+                let p = (this.appWidth / 10 * 9 - 6 * 9) / 9
+                console.log(this.appWidth)
+                return `width:${p}px;height:${p+(this.is_mobile?1:0)}px; border:none;background-color: transparent; text-align:center; margin:0px;  font-family: Verdana;font-size:${p}px;`
+            },
+            canvas() {
+                if (document.getElementsByTagName('canvas').length > 0) {
+                    this.appWidth = document.getElementsByTagName('canvas')[0].offsetWidth
+                    // console.log('pad:', document.getElementsByTagName('canvas')[0].offsetWidth, document.getElementsByTagName('canvas')[0].offsetHeight, this.appWidth)
+                }
+                let c_left = (document.getElementById('pixi').offsetWidth - this.appWidth) / 2
+                let c_top = document.getElementById('pixi').offsetTop
+                return {
+                    top: this.appWidth / 20 + c_top + 2, // 2 = border width
+                    left: this.appWidth / 20 + c_left + 2,
+                }
+            },
+        },
+        methods: {
+            submit_puzzle() {
+                let input = []
+                try {
+                    let p = this.user_input.split('\n')
+                    for (let i = 0; i < 9; i++) {
+                        input.push([])
+                        for (let j = 0; j < 9; j++) {
+                            try {
+                                input[i].push(parseInt(p[i][j]))
+                            } catch (e) {
+                                input[i].push(0)
+                            }
+                        }
+                    }
+                    this.load_sudo(input)
+                } catch (e) {
+                    console.log(e)
+                }
+            },
+            next_assume(type) {
+                if (type == 'next') {
+                    for (let ind = this.guess_step + 1; ind < this.guess_record.length; ind++) {
+                        // console.log(this.guess_step, type, ind)
+                        if (this.guess_record[ind]['type'] && this.guess_record[ind]['type'] == 'assume') {
+                            this.guess_step = ind + 1
+                            return this.show_step(ind + 1)
+                        }
+                    }
+                } else
+                    for (let ind = this.guess_step - 2; ind > 0; ind--) {
+                        if (this.guess_record[ind]['type'] && this.guess_record[ind]['type'] == 'assume') {
+                            this.guess_step = ind + 1
+                            return this.show_step(ind + 1)
+                        }
+                    }
+                this.info_addition = '没有猜测点了！'
+            },
+            show_step(step) {
+                // console.log(step, this.guess_record[step])
+                step -= 1
+                this.info_addition = this.guess_record[step]['desc']
+                // console.log(step, this.guess_record[step]['desc'], this.guess_record[step]['value'])
+                this.toggle_answer(false)
+
+                let num_style = {
+                    guess: new PIXI.TextStyle({
+                        fontFamily: 'Verdana',
+                        fontSize: 42 * (this.appWidth) / 520,
+                        fontWeight: 'bold',
+                        // fill: ['#e0ffaa', '#a1c595'], // gradient
+                        fill: ['#5555ff'],
+                        stroke: '#4a1850',
+                        strokeThickness: 2 * (this.appWidth) / 520,
+                    }),
+                    guess_highlight: new PIXI.TextStyle({
+                        fontFamily: 'Verdana',
+                        fontSize: 42 * (this.appWidth) / 520,
+                        fontWeight: 'bold',
+                        fill: ['#17ffeb'],
+                        stroke: '#4a1850',
+                        strokeThickness: 4 * (this.appWidth) / 520,
+                        dropShadow: true,
+                        dropShadowColor: '#0000ff',
+                        dropShadowBlur: 12 * (this.appWidth) / 520,
+                        dropShadowAngle: 0,
+                        dropShadowDistance: 0 * (this.appWidth) / 520,
+                    }),
+                    assume_highlight: new PIXI.TextStyle({
+                        fontFamily: 'Verdana',
+                        fontSize: 42 * (this.appWidth) / 520,
+                        fontWeight: 'bold',
+                        fill: ['#ff5555'],
+                        stroke: '#4a1850',
+                        strokeThickness: 4 * (this.appWidth) / 520,
+                        dropShadow: true,
+                        dropShadowColor: '#00ff00',
+                        dropShadowBlur: 12 * (this.appWidth) / 520,
+                        dropShadowAngle: 0,
+                        dropShadowDistance: 0 * (this.appWidth) / 520,
+                    }),
+                    guess_array: new PIXI.TextStyle({
+                        fontFamily: 'Verdana',
+                        fontSize: 14 * (this.appWidth) / 520,
+                        fontWeight: 'bold',
+                        // fill: ['#e0ffaa', '#a1c595'], // gradient
+                        fill: ['#6666ff'],
+                    }),
+                }
+                let sudotext = ''
+                let r_padding = (this.appWidth) / 10
+                let puzzle_step = this.guess_record[step]['value']
+                // console.log(this.guess_record[step]['value'], puzzle_step[0])
+                let hl = this.guess_record[step]['highlight']
+                if (hl) {
+                    // console.log(hl)
+                    // this.cells[hl[0]][hl[1]]['highlight'].visible = true
+                    this.cells.forEach((row, ind, arrary) => {
+                        row.forEach((cell, ii, arrary2) => {
+                            if (cell['highlight']) {
+                                if (ind == hl[0] && ii == hl[1])
+                                    cell['highlight'].visible = true
+                                else cell['highlight'].visible = false
+                            }
+                        })
+                    })
+                }
+                puzzle_step.forEach((r, ind, arrary) => {
+                    for (let c = 0; c < 9; c++) {
+                        sudotext = r[c]
+                        if (this.cells[ind][c]['empty']) {
+                            let richText
+                            if (sudotext.length == undefined) { // 已知数字
+                                if (hl && ind == hl[0] && c == hl[1]) {
+                                    if (this.guess_record[step]['highlight_type'])
+                                        richText = new PIXI.Text(sudotext, num_style.assume_highlight);
+                                    else richText = new PIXI.Text(sudotext, num_style.guess_highlight);
+                                } else richText = new PIXI.Text(sudotext, num_style.guess);
+                                richText.x = r_padding * 0.7 + c * r_padding;
+                                richText.y = r_padding * (this.is_mobile ? 0.45 : 0.5) + ind * r_padding;
+                            } else { // 未知数字
+                                richText = new PIXI.Text(' ', num_style.guess_array);
+                                richText.x = r_padding * 0.68 + c * r_padding;
+                                richText.y = r_padding * (this.is_mobile ? 0.55 : 0.65) + ind * r_padding;
+                                let block_xy = [
+                                    [0, 0],
+                                    [0, 1],
+                                    [0, 2],
+                                    [1, 0],
+                                    [1, 1],
+                                    [1, 2],
+                                    [2, 0],
+                                    [2, 1],
+                                    [2, 2]
+                                ]
+                                sudotext.forEach((b, ind, arrary) => {
+                                    let block = new PIXI.Text(b, num_style.guess_array);
+                                    block.x = block_xy[b - 1][1] * r_padding / 4
+                                    block.y = block_xy[b - 1][0] * r_padding / 4 + 2
+                                    // console.log(b, block.x, block.y, sudotext)
+                                    richText.addChild(block)
+                                })
+                            }
+                            this.app.stage.addChild(richText);
+                            if (this.cells[ind][c]['guess']) {
+                                this.cells[ind][c]['guess'].destroy(true)
+                                this.cells[ind][c]['guess'] = null
+                            }
+                            this.cells[ind][c]['guess'] = richText
+
+                        }
+                    }
+                })
+
+            },
+            start_steps() {
+                this.toggle_answer(false, 'guess')
+            },
+            toggle_answer(visible, guess) {
+                if (visible == false) { this.answer_visible = false } else this.answer_visible = !this.answer_visible
+                this.cells.forEach((row, ind, arrary) => {
+                    row.forEach((cell, ii, arrary2) => {
+                        if (cell['answer']) {
+                            cell['answer'].visible = this.answer_visible
+                            // cell['empty'].visible = !cell['empty'].visible
+                        }
+                        if (guess && cell['guess']) cell['guess'].visible = !cell['guess'].visible
+                    })
+                })
+            },
+            highlight(v) {
+                // console.log(v)
+                if (v == 0) {
+                    this.cell_editable = true
+                } else {
+                    this.cell_editable = false
+                    if (v == this.previous_highlight) {
+                        this.is_highlighted = !this.is_highlighted
+                    } else {
+                        this.is_highlighted = true
+                        this.previous_highlight = v
+                    }
+                    this.cells.forEach((row, ind, arrary) => {
+                        row.forEach((cell, ii, arrary2) => {
+                            if (cell['value'] == v) {
+                                cell['highlight'].visible = this.is_highlighted
+                                cell['fix'].visible = !this.is_highlighted
+                            } else if (cell['value'] > 0) {
+                                cell['highlight'].visible = false
+                                cell['fix'].visible = true
+                            }
+                        })
+                    })
+                }
+            },
+            async fetch_tmda(nd) {
+                // this.puzzle_answer = null
+                this.reset_pixi()
+                if (nd == 5) {
+                    return this.load_sudo(this.puzzle0)
+                }
+                this.info = 'Fetching...'
+                this.nd = this.levels.length - 1
+                this.loading = true
+                try {
+                    response = await axios.post('/fetch_tmda', {
+                        level: nd,
+                    }, {
+                        headers: { 'Content-Type': 'application/json; charset=UTF-8' }
+                    })
+                } catch (error) {
+                    this.loading = false
+                    alert(JSON.stringify(response.data) + '，请检查题目！')
+                    this.puzzle = this.puzzle0
+                }
+                this.loading = false
+                this.puzzle = response.data.tmda
+                this.load_sudo(this.puzzle)
+                this.nd = response.data.nd
+                // this.can_click_solve = true
+                if (response.data.code === 'success') {
+                    this.info = 'Fetch OK'
+                    this.info_addition = `在线题目读取成功`
+                } else {
+                    this.info = 'Fetch Fail'
+                    this.info_addition = '不能读取到在线题目，使用默认。'
+                }
+            },
+            async solve_sudo() {
+                if (this.puzzle_answer) {
+                    return this.toggle_answer()
+                }
+                this.info = 'Solving...'
+                this.loading = true
+                try {
+                    response = await
+                    axios.post('/solve', {
+                        puzzle: this.puzzle.toString()
+                    }, {
+                        headers: { 'Content-Type': 'application/json; charset=UTF-8' }
+                    })
+                } catch (error) {
+                    this.loading = false
+                    this.answer_visible = false
+                    alert(JSON.stringify(response.data) + '，请检查题目！')
+                    this.total_guess = -1
+                }
+                this.loading = false
+                this.answer_visible = true
+                if (response.data.code === 'success') {
+                    this.puzzle_answer = response.data.result
+                    this.load_sudo(this.puzzle_answer, 'answer')
+                    this.info = 'Solved'
+                    this.info_addition = `Solved! 耗时${response.data.time_cost}s，共猜测${response.data.guess_times}次`
+                    this.total_guess = response.data.guess_times
+                    this.guess_record = response.data.guess_record
+                } else {
+                    this.info = this.info_addition = 'Wrong Sodu!'
+                    this.total_guess = -1
+                    alert(JSON.stringify(response.data))
+                }
+            },
+            clear_pad() {
+                // console.log('cells:', this.cells)
+                if (this.cells[0][0] != 0) {
+                    // clear previous puzzle cells
+                    this.cells.forEach((row, ind, arrary) => {
+                        row.forEach((cell, ii, arrary2) => {
+                            Object.keys(cell).forEach(function(key) {
+                                try {
+                                    cell[key].destroy(true) // cell.fix/highlight/answer/empty
+                                    cell[key] = null;
+                                } catch (error) { cell[key] = null; } // cell.value
+                            })
+                        })
+                    })
+                }
+            },
+            load_sudo(p, answer) {
+                this.sprite.visible = false
+                let puzzle_origin = this.puzzle
+                let puzzle_answer = null
+                if (answer) {
+                    puzzle_answer = p
+                    this.puzzle = puzzle_origin
+                    // console.log('puzzle_answer:', puzzle_answer[0], 'question:', this.puzzle[0])
+                } else {
+                    this.puzzle = p
+                    this.clear_pad()
+                }
+                // console.log('p:', p[0], 'answer:', answer)
+                let num_style = {
+                    fix: new PIXI.TextStyle({
+                        fontFamily: 'Verdana',
+                        fontSize: 42 * (this.appWidth) / 520,
+                        fontWeight: 'bold',
+                        fill: ['#ffee88', '#eeaa00'], // gradient
+                        stroke: '#4a1850',
+                        strokeThickness: 4 * (this.appWidth) / 520,
+                        dropShadow: true,
+                        dropShadowColor: '#999999',
+                        dropShadowBlur: 4 * (this.appWidth) / 520,
+                        dropShadowAngle: Math.PI / 6,
+                        dropShadowDistance: 4 * (this.appWidth) / 520,
+                    }),
+                    highlight: new PIXI.TextStyle({
+                        fontFamily: 'Verdana',
+                        fontSize: 42 * (this.appWidth) / 520,
+                        fontWeight: 'bold',
+                        fill: ['#e0eeaa', '#eeaa00'], // gradient
+                        stroke: '#00aa00',
+                        strokeThickness: 4 * (this.appWidth) / 520,
+                        dropShadow: true,
+                        dropShadowColor: '#00ff00',
+                        dropShadowBlur: 12 * (this.appWidth) / 520,
+                        dropShadowAngle: 0,
+                        dropShadowDistance: 0 * (this.appWidth) / 520,
+                    }),
+                    answer: new PIXI.TextStyle({
+                        fontFamily: 'Verdana',
+                        fontSize: 42 * (this.appWidth) / 520,
+                        fontWeight: 'bold',
+                        // fill: ['#e0ffaa', '#a1c595'], // gradient
+                        fill: ['#80dd80'], // gradient
+                        stroke: '#4a1850',
+                        strokeThickness: 3 * (this.appWidth) / 520,
+                    }),
+                }
+                let sudotext = ''
+                let r_padding = (this.appWidth) / 10
+                this.puzzle.forEach((r, ind, arrary) => {
+                    for (let c = 0; c < 9; c++) {
+                        sudotext = r[c]
+                        if (sudotext != 0) {
+                            if (answer) {
+                                this.cells[ind][c]['fix'].visible = true
+                                this.cells[ind][c]['highlight'].visible = false
+                            } else {
+                                let richText = new PIXI.Text(sudotext, num_style.fix);
+                                richText.x = r_padding * 0.7 + c * r_padding;
+                                richText.y = r_padding * (this.is_mobile ? 0.45 : 0.5) + ind * r_padding;
+                                this.app.stage.addChild(richText);
+                                richText.visible = true
+                                this.cells[ind][c] = { fix: richText }
+                                let text2 = new PIXI.Text(sudotext, num_style.highlight);
+                                text2.x = richText.x
+                                text2.y = richText.y
+                                this.app.stage.addChild(text2);
+                                text2.visible = false
+                                this.cells[ind][c]['highlight'] = text2
+                                this.cells[ind][c]['value'] = parseInt(sudotext)
+                            }
+                        } else {
+                            if (answer) {
+                                let richText = new PIXI.Text(puzzle_answer[ind][c], num_style.answer);
+                                richText.x = r_padding * 0.7 + c * r_padding;
+                                richText.y = r_padding * (this.is_mobile ? 0.45 : 0.5) + ind * r_padding;
+                                this.app.stage.addChild(richText);
+                                this.cells[ind][c]['answer'] = richText
+                            } else { // draw empty rect
+                                let graphics = new PIXI.Graphics();
+                                graphics.lineStyle(4, 0xaa8800, 0.3); // thickness, color, alpha
+                                // graphics.beginFill(0xFF700B, 0.1);
+                                graphics.drawRect(r_padding * (c + 0.5) + 4, r_padding * (ind + 0.5) + 4, r_padding - 8, r_padding - 8);
+                                this.app.stage.addChild(graphics);
+                                this.cells[ind][c] = { empty: graphics }
+                            }
+                        }
+                    }
+                })
+                this.allow_action = true
+            },
+            reset_pixi() {
+                this.clear_pad()
+                this.sprite.visible = true
+                this.sprite.scale.x = 1
+                this.sprite.scale.y = 1
+                this.info = 'Reset OK'
+                this.info_addition = '左上角选取难度，点铅笔手动输入，点垃圾桶清空桌面'
+                this.init_puzzle()
+                this.allow_action = false
+                this.answer_visible = false
+                this.total_guess = -1
+                this.guess_step = 0
+                this.guess_record = []
+            },
+            init_puzzle() {
+                this.puzzle = [], this.puzzle_input = [], this.cells = []
+                this.puzzle_answer = null
+                for (let r = 0; r < 9; r++) {
+                    let row = []
+                    for (let r = 0; r < 9; r++) {
+                        row.push(0)
+                    }
+                    this.puzzle.push(row)
+                    this.puzzle_input.push(row)
+                    this.cells.push(row)
+                }
+            },
+            init_pixi() {
+                let app = new PIXI.Application(this.appWidth, this.appWidth, { backgroundColor: 0x1099bb });
+                (document.getElementById('pixi')).appendChild(app.view);
+                this.appWidth = Math.min((document.getElementById('pixi')).offsetHeight, (document.getElementById('pixi')).offsetWidth)
+                // Scale mode for all textures, will retain pixelation
+                PIXI.settings.SCALE_MODE = PIXI.SCALE_MODES.NEAREST;
+                var background = new PIXI.Sprite.fromImage('/static/tile.png');
+                background.width = this.appWidth;
+                background.height = this.appWidth;
+                app.stage.addChild(background);
+
+                // draw grid
+                let graphics = new PIXI.Graphics();
+                graphics.lineStyle(2, 0x808020, 1);
+                graphics.beginFill(0xFF700B, 0.1);
+                let r_padding = (this.appWidth) / 10
+                graphics.drawRect(r_padding / 2, r_padding / 2, r_padding * 3, r_padding * 3);
+                graphics.drawRect(r_padding * 6.5, r_padding / 2, r_padding * 3, r_padding * 3);
+                graphics.drawRect(r_padding * 3.5, r_padding / 2 + r_padding * 3, r_padding * 3, r_padding * 3);
+                graphics.drawRect(r_padding / 2, r_padding * 6.5, r_padding * 3, r_padding * 3);
+                graphics.drawRect(r_padding * 6.5, r_padding * 6.5, r_padding * 3, r_padding * 3);
+                graphics.endFill();
+                app.stage.addChild(graphics);
+
+                let sprite = PIXI.Sprite.fromImage('/static/bunny.png');
+                // Set the initial position
+                sprite.anchor.set(0.5);
+                sprite.x = app.screen.width / 2;
+                sprite.y = app.screen.height / 2;
+                // Opt-in to interactivity
+                sprite.interactive = true;
+                // Shows hand cursor
+                sprite.buttonMode = true;
+                // Pointers normalize touch and mouse
+                sprite.on('pointerdown', onClick);
+                app.stage.addChild(sprite);
+
+                function onClick() {
+                    sprite.scale.x *= 1.25;
+                    sprite.scale.y *= 1.25;
+                }
+                this.app = app
+                this.sprite = sprite
+            },
+        },
+    })
+    </script>
+</body>
+
+</html>

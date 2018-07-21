@@ -1,0 +1,90 @@
+
+.bk {table-layout: fixed; background-color:#fff; width: 420px; vertical-align: middle;  border-collapse: collapse; text-align: center;}
+
+.sd {table-layout: fixed;border: #443 3px solid;width: 355px; height:355px; background-color:#fff;
+      vertical-align: middle;  border-collapse: collapse; text-align: center;}
+
+td.xx-bak { border-bottom: #999 1px solid;border-right: #999 1px solid; border-top: #999 1px solid; width: 30px; height: 30px; text-align: center; LINE-height:30px; }
+td.xx { border: rgba(199, 173, 133, 0) 2px solid; width: 30px; height: 30px; text-align: center;}
+td.xx-no-border { border: 0; width: 30px; height: 30px; text-align: center;}
+td.rr { border-right: #443 2px solid; border-top: #999 1px solid; width: 30px; height: 30px; text-align: center; LINE-height:30px;}
+td.bb { border-right: #999 1px solid; border-top: #999 1px solid; border-bottom: #443 2px solid; width: 30px; height: 30px; text-align: center;  LINE-height:30px; }
+td.br { border-right: #443 2px solid; border-top: #999 1px solid; border-bottom: #443 2px solid; width: 30px; height: 30px; text-align: center;  LINE-height:30px; }
+
+.fix-bak {FONT-SIZE: 25px; border:none;background-color: transparent; WIDTH: 30px;HEIGHT: 30px; LINE-HEIGHT: 28px;TEXT-ALIGN: center; margin:0px; COLOR: #000000; FONT-FAMILY:  Verdana;}
+.fix {FONT-SIZE: 25px; border:none;background-color: transparent; WIDTH: 30px;HEIGHT: 30px; LINE-HEIGHT: 28px;TEXT-ALIGN: center; margin:0px; COLOR: #000000; FONT-FAMILY:  Verdana;}
+.fix2 {FONT-SIZE: 25px; border:2px solid red;background-color: transparent; WIDTH: 26px;HEIGHT: 26px; LINE-HEIGHT: 25px;TEXT-ALIGN: center; margin:0px; COLOR: #000000; FONT-FAMILY:  Verdana;}
+.big-bak {FONT-SIZE: 25px; border:none;background-color: transparent; WIDTH: 30px;HEIGHT: 30px; LINE-HEIGHT: 28px;TEXT-ALIGN: center; margin:0px; COLOR: #0000FF; FONT-FAMILY:  Verdana;}
+.big2 {FONT-SIZE: 25px; border:2px solid red;background-color: transparent; WIDTH: 26px;HEIGHT: 26px; LINE-HEIGHT: 25px;TEXT-ALIGN: center; margin:0px; COLOR: #0000FF; FONT-FAMILY:  Verdana;}
+.err {FONT-SIZE: 25px; border:none;background-color: #ff0000; WIDTH: 30px;HEIGHT: 30px; LINE-HEIGHT: 28px;TEXT-ALIGN: center; margin:0px; COLOR: #0000FF; FONT-FAMILY:  Verdana;}
+.cad {FONT-SIZE: 10px; border:none;background-color: transparent; WIDTH: 33px;HEIGHT: 28px; LINE-HEIGHT: 28px;TEXT-ALIGN: center; margin:0px; COLOR: #0000FF; FONT-FAMILY:  Verdana;}
+
+.fieldset{background-color:#fff;font:14px bold;color:#0000FF; cursor:default; border:2px blue solid;padding-bottom:5px;}
+.radio{background-color:#fff;font:14px bold;color:#000000; cursor:default}
+.button{font-family: Verdana; font-size: 12px;  height:25px;}
+
+td.sel {
+	width: 25px;
+	height: 25px;
+	text-align: center;
+	LINE-height:25px;
+	border:0px solid blue;
+}
+.numsel{background-color:#fff;
+	font:20px bold;color:blue;width:30px;height:25px;
+	border:2px solid blue;
+	text-align: center; cursor:pointer;padding: 0px;
+	}
+.numsel2{background-color:#aaa;font:20px bold;color:blue;width:30px;height:25px;
+	border:2px solid #blue;
+	text-align: center; cursor:pointer;padding: 0px;}
+
+ul#nav {
+	clear:both;
+	float:left;
+	margin: 0px 0px 0px 5px;
+	padding: 0px 0px 0px 0px;
+	list-style: none;
+	width:100%;
+	color:#FFFFFF;
+	background-color:#fff;
+	font-size: 12px;
+	font-family: "Times New Roman", Times, serif;
+}
+
+ul#nav li {
+	margin: 0px 0px 0px 0px;
+	padding: 0px 3px 0px 0px;
+	float: left;
+}
+
+ul#nav li a {
+	display: block;
+	margin: 0px 2px 0px 0px;
+	padding: 0px 5px 0px 5px;
+	color: #FFFFFF;
+	background-color:#0065CE;
+	font-weight: normal;
+	text-decoration: none;
+}
+
+ul#nav li a:hover {
+	background-color:#FF0;
+        color: #000;
+}
+
+ul#nav a.selected {
+	background-color:#FF0;
+        color: #000;
+}
+
+ul#nav2 {
+	float:left;
+	list-style: none;
+}
+
+ul#nav2 li {
+	margin: 0px 0px 0px 0px;
+	padding: 0px 1px 0px 0px;
+	float: right;
+}
